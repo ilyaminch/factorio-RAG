@@ -1,7 +1,7 @@
 """Сбор Factorio Wiki. Установка: pip install requests beautifulsoup4
 
-Запуск: python parser.py
-Результат: data/raw/<page_id>.json рядом со скриптом.
+Запуск из корня проекта: python -m src.data_pipeline.parser
+Результат: data/raw/<page_id>.json в корне проекта.
 """
 
 import json
@@ -15,7 +15,8 @@ from bs4 import BeautifulSoup
 
 
 BASE_URL = 'https://wiki.factorio.com'
-OUTPUT = Path(__file__).parent / 'data' / 'raw'
+ROOT = Path(__file__).resolve().parents[2]
+OUTPUT = ROOT / 'data' / 'raw'
 
 
 def get_json(session, **params):
@@ -33,6 +34,14 @@ def get_json(session, **params):
 
 
 def get_pages(session):
+    """Получить английские статьи и руководства с учётом пагинации API.
+
+    Args:
+        session: Сессия Requests для запросов к Wiki.
+
+    Returns:
+        Список страниц с ID и названием.
+    """
     pages = []
     # 0 — статьи, 3000 — руководства Tutorial с описаниями механик.
     for namespace in (0, 3000):
@@ -56,6 +65,7 @@ def get_pages(session):
 
 
 def get_text(element):
+    """Преобразовать HTML в текст, сохранив названия и количества у иконок."""
     # В рецептах названия ресурсов находятся в ссылках у иконок.
     soup = BeautifulSoup(str(element), 'html.parser')
     for icon in soup.select('.factorio-icon'):
@@ -73,6 +83,14 @@ def get_text(element):
 
 
 def parse_article(page):
+    """Извлечь описание, инфобоксы и содержимое статьи из ответа API.
+
+    Args:
+        page: Поле parse ответа MediaWiki с HTML и данными ревизии.
+
+    Returns:
+        Словарь для сохранения в raw JSON.
+    """
     soup = BeautifulSoup(page['text'], 'html.parser')
     article = soup.select_one('.mw-parser-output') or soup
     html = str(article)

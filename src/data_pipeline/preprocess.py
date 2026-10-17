@@ -1,4 +1,6 @@
-"""Запуск: python preprocess.py (нужен beautifulsoup4, как и для parser.py).
+"""Очистка статей и создание чанков с метаданными.
+
+Запуск из корня: python -m src.data_pipeline.preprocess.
 
 Очищенные статьи: data/processed/pages/<page_id>.json.
 Чанки для последующего вычисления эмбеддингов: data/processed/chunks.jsonl.
@@ -11,10 +13,10 @@ from urllib.parse import quote
 from uuid import NAMESPACE_URL, uuid5
 
 from bs4 import BeautifulSoup
-from parser import get_text
+from src.data_pipeline.parser import get_text
 
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / 'data' / 'raw'
 OUTPUT = ROOT / 'data' / 'processed'
 CHUNK_SIZE = 1600  # Символы, включая название статьи и раздела, не токены.
@@ -90,6 +92,14 @@ def blocks(node):
 
 
 def clean_page(raw):
+    """Очистить статью и разделить характеристики и основной текст на разделы.
+
+    Args:
+        raw: Исходная запись из data/raw с HTML и данными страницы.
+
+    Returns:
+        Словарь с метаданными и очищенными разделами.
+    """
     soup = BeautifulSoup(raw['html'], 'html.parser')
     for node in soup.select('.languages-container, .navbox, .toc, #toc, .mw-editsection, '
                             '.reference, .mw-references-wrap, .reflist, .landmark, script, style'):
@@ -181,6 +191,14 @@ def split_text(text, size, overlap=OVERLAP):
 
 
 def make_chunks(document):
+    """Сформировать чанки одного документа с источниками и стабильными UUID.
+
+    Args:
+        document: Очищенная статья с метаданными и разделами.
+
+    Yields:
+        Словари с id, text и metadata для эмбеддингов.
+    """
     metadata = document['metadata']
     for section_index, section in enumerate(document['sections']):
         prefix = f"{metadata['title']}\n{section['heading']}\n\n"

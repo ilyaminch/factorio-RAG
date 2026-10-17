@@ -19,7 +19,7 @@ if not client.collection_exists(collection_name):
     )
     print(f"Коллекция '{collection_name}' успешно создана.")
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parents[2]
 jsonl_file_path = ROOT / 'data' / 'processed' / 'chunks.jsonl'
 batch_size = 100
 
