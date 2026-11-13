@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from base64 import b64encode
 from copy import deepcopy
+import logging
+import re
+import traceback
+from pathlib import Path
 from threading import Lock
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import streamlit as st
 
@@ -12,6 +17,7 @@ import streamlit as st
 HISTORY_LIMIT_DEFAULT = 5
 QUESTION_LIMIT_DEFAULT = 1000
 _RESOURCE_LOCK = Lock()
+_LOGGER = logging.getLogger(__name__)
 
 
 class IntegrationUnavailable(RuntimeError):
@@ -52,17 +58,14 @@ def _load_resources() -> dict:
 def _init_state() -> None:
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
-    if "last_attempt" not in st.session_state:
-        st.session_state.last_attempt = None
 
 
 def _show_sources(sources: object) -> None:
-    if not isinstance(sources, list) or not sources:
-        st.write("Источники не найдены.")
+    if not isinstance(sources, list):
         return
 
     for index, source in enumerate(sources):
-        with st.container(border=True):
+        with st.container(border=True, width="content"):
             if not isinstance(source, dict):
                 st.write("Некорректный источник.")
                 continue
@@ -70,28 +73,35 @@ def _show_sources(sources: object) -> None:
             source_id = source.get("source_id", index + 1)
             title = str(source.get("title") or "Источник без названия")
             section = source.get("section")
-            st.write(f"[{source_id}] {title}")
-            if section:
-                st.write(section)
-
+            label = f"[{source_id}] {title}"
+            label = re.sub(r"([\\`*_{}\[\]()<>#!|])", r"\\\1", label)
             url = source.get("url")
             if (
                 isinstance(url, str)
                 and urlparse(url).scheme in {"http", "https"}
                 and urlparse(url).netloc
             ):
-                st.markdown(f"[Открыть источник]({url})")
+                label = f"[{label}]({quote(url, safe=':/?#[]@!$&%*+,;=~')})"
+            if section:
+                escaped_section = re.sub(
+                    r"([\\`*_{}\[\]()<>#!|])", r"\\\1", str(section)
+                )
+                label += f" — {escaped_section}"
+            st.markdown(label)
 
 
-def _show_turn(turn: dict, index: int) -> None:
-    with st.container(border=True):
-        st.write("Вопрос")
-        st.write(turn["question"])
-    with st.container(border=True):
-        st.write("Ответ")
+def _show_question(question: str) -> None:
+    with st.container(horizontal=True, horizontal_alignment="right"):
+        with st.container(border=True, width="content"):
+            st.write(question)
+
+
+def _show_turn(turn: dict) -> None:
+    _show_question(turn["question"])
+    if "error" in turn:
+        st.write(turn["error"])
+    else:
         st.write(turn["answer"])
-    with st.container(border=True):
-        st.write("Источники")
         _show_sources(turn.get("sources"))
 
 
@@ -125,10 +135,22 @@ def _valid_result(result: object) -> bool:
 
 
 def _submit_question(question: str) -> None:
+    turn = {"question": question}
     try:
+        if not question:
+            raise IntegrationUnavailable("Введите вопрос.")
         resources = _load_resources()
+        if len(question) > resources["question_limit"]:
+            turn["error"] = (
+                f'Вопрос слишком длинный. Максимум: {resources["question_limit"]} символов.'
+            )
+            st.session_state.conversation.append(turn)
+            return
         history_limit = resources["history_limit"]
-        history = deepcopy(st.session_state.conversation[-history_limit:])
+        successful_turns = [
+            item for item in st.session_state.conversation if "answer" in item
+        ]
+        history = deepcopy(successful_turns[-history_limit:])
 
         with _RESOURCE_LOCK:
             result = resources["answer"](
@@ -143,71 +165,69 @@ def _submit_question(question: str) -> None:
             raise ValueError("Ответ RAG не соответствует общему формату.")
         if result["status"] == "error":
             error = result["error"]
-            st.session_state.last_attempt = {
-                "question": question,
-                "message": f'{error["code"]}: {error["message"]}',
-            }
-            return
-
-        st.session_state.conversation = (
-            st.session_state.conversation
-            + [
-                {
-                    "question": question,
-                    "answer": result["answer"],
-                    "sources": deepcopy(result["sources"]),
-                }
-            ]
-        )[-history_limit:]
-        st.session_state.last_attempt = None
+            turn["error"] = f'{error["code"]}: {error["message"]}'
+        else:
+            turn["answer"] = result["answer"]
+            turn["sources"] = deepcopy(result["sources"])
     except Exception as exc:
-        st.session_state.last_attempt = {
-            "question": question,
-            "message": _error_message(exc),
-        }
+        if not isinstance(exc, IntegrationUnavailable):
+            location = traceback.extract_tb(exc.__traceback__)[-1]
+            _LOGGER.error(
+                "Ошибка обработки вопроса: %s (%s:%d, %s)",
+                type(exc).__name__,
+                Path(location.filename).name,
+                location.lineno,
+                location.name,
+            )
+        turn["error"] = _error_message(exc)
+    st.session_state.conversation.append(turn)
+
+
+@st.cache_data(show_spinner=False)
+def _load_styles(file_versions: tuple[int, ...]) -> str:
+    """Подготавливает локальные стили и шрифты один раз до изменения файлов."""
+    app_dir = Path(__file__).parent
+    styles = (app_dir / "style.css").read_text(encoding="utf-8")
+    for name, filename in (
+        ("FULL_AUTOMATION", "FullAutomation.otf"),
+        ("EXO_2", "Exo2.ttf"),
+    ):
+        font = b64encode((app_dir / "fonts" / filename).read_bytes()).decode("ascii")
+        styles = styles.replace(f"{{{{{name}}}}}", font)
+    return styles
 
 
 def main() -> None:
-    st.set_page_config(page_title="Factorio Wiki RAG")
+    st.set_page_config(page_title="Factorio Wiki")
     _init_state()
 
-    st.title("Factorio Wiki RAG")
+    app_dir = Path(__file__).parent
+    style_files = (
+        app_dir / "style.css",
+        app_dir / "fonts" / "FullAutomation.otf",
+        app_dir / "fonts" / "Exo2.ttf",
+    )
+    styles = _load_styles(tuple(path.stat().st_mtime_ns for path in style_files))
+    st.markdown(f"<style>{styles}</style>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <header class="factory-header">
+          <div class="factory-heading">
+            <h1>Factorio Wiki</h1>
+          </div>
+        </header>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    if st.button("Очистить разговор"):
-        st.session_state.conversation = []
-        st.session_state.last_attempt = None
-        st.rerun()
-
-    if not st.session_state.conversation and not st.session_state.last_attempt:
-        with st.container(border=True):
-            st.write("Вопрос")
-        with st.container(border=True):
-            st.write("Ответ")
-        with st.container(border=True):
-            st.write("Источники")
-
-    for index, turn in enumerate(st.session_state.conversation):
-        _show_turn(turn, index)
-
-    attempt = st.session_state.last_attempt
-    if attempt:
-        with st.container(border=True):
-            st.write("Вопрос")
-            st.write(attempt["question"])
-        with st.container(border=True):
-            st.write("Ответ")
-            st.write(attempt["message"])
+    for turn in st.session_state.conversation:
+        _show_turn(turn)
 
     question = st.chat_input("Введите вопрос")
     if question is not None:
-        question = question.strip()
-        if question:
-            _submit_question(question)
-        else:
-            st.session_state.last_attempt = {
-                "question": question,
-                "message": "Введите вопрос.",
-            }
+        _show_question(question.strip())
+        with st.spinner("Готовлю ответ…"):
+            _submit_question(question.strip())
         st.rerun()
 
 
