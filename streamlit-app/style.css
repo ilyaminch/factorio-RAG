@@ -66,9 +66,20 @@
 [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] {
     background: transparent !important;
 }
-[data-testid="stBottom"]::before,
 [data-testid="stBottom"] > div {
     background: transparent !important;
+    position: relative;
+    z-index: 1;
+}
+[data-testid="stBottom"]::before {
+    content: "";
+    position: absolute;
+    inset: -3rem 0 0;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 85%);
+    mask-image: linear-gradient(to bottom, transparent, black 85%);
 }
 [data-testid="stBottomBlockContainer"] {
     max-width: 900px;

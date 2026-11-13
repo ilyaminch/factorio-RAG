@@ -18,6 +18,7 @@ class Settings(TypedDict):
     TOP_K: int
     MISTRAL_API_KEY: str | None
     MISTRAL_MODEL: str | None
+    MISTRAL_BASE_URL: str | None
     HISTORY_TURNS: int
     MAX_QUESTION_CHARS: int
     ANSWER_MAX_TOKENS: int
@@ -91,5 +92,6 @@ def load_settings() -> Settings:
         or "BAAI/bge-small-en-v1.5",
         "MISTRAL_API_KEY": _optional_env("MISTRAL_API_KEY"),
         "MISTRAL_MODEL": _optional_env("MISTRAL_MODEL"),
+        "MISTRAL_BASE_URL": _optional_env("MISTRAL_BASE_URL"),
         **integer_values,
     }
