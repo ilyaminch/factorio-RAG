@@ -1,0 +1,32 @@
+name: factorio-rag
+
+services:
+  app:
+    image: factorio-rag:local
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"
+    env_file:
+      - /mnt/storage/factorio-rag/.env
+    environment:
+      QDRANT_PATH: /app/data/qdrant_db
+      CHUNKS_PATH: /app/data/processed/chunks.jsonl
+    volumes:
+      - type: bind
+        source: /mnt/storage/factorio-rag/data
+        target: /app/data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /mnt/storage/factorio-rag/cache
+        target: /cache
+        bind:
+          create_host_path: false
+    cpus: 2.0
+    mem_limit: 4g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
