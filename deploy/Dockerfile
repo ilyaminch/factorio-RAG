@@ -23,6 +23,8 @@ RUN python -m pip install --no-cache-dir -r deploy/requirements.txt
 
 COPY src/ ./src/
 COPY streamlit-app/app.py ./streamlit-app/app.py
+COPY streamlit-app/style.css ./streamlit-app/style.css
+COPY streamlit-app/fonts/ ./streamlit-app/fonts/
 COPY streamlit-app/.streamlit/ ./streamlit-app/.streamlit/
 USER app
 WORKDIR /app/streamlit-app

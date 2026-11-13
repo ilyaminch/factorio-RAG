@@ -3,6 +3,7 @@ toolbarMode = "minimal"
 
 [theme]
 base = "light"
-baseRadius = "0rem"
-buttonRadius = "0rem"
+primaryColor = "#bd7844"
+baseRadius = "0.75rem"
+buttonRadius = "0.625rem"
 showWidgetBorder = true
