@@ -21,6 +21,7 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertEqual(settings["TOP_K"], 4)
         self.assertIsNone(settings["MISTRAL_API_KEY"])
         self.assertIsNone(settings["MISTRAL_MODEL"])
+        self.assertIsNone(settings["MISTRAL_BASE_URL"])
 
     def test_environment_overrides_are_normalized(self) -> None:
         with patch.dict(
@@ -31,6 +32,7 @@ class LoadSettingsTests(unittest.TestCase):
                 "TOP_K": "7",
                 "MISTRAL_API_KEY": "  secret  ",
                 "MISTRAL_MODEL": "  mistral-small  ",
+                "MISTRAL_BASE_URL": "  https://example.com/v1  ",
             },
             clear=True,
         ):
@@ -41,6 +43,7 @@ class LoadSettingsTests(unittest.TestCase):
         self.assertEqual(settings["TOP_K"], 7)
         self.assertEqual(settings["MISTRAL_API_KEY"], "secret")
         self.assertEqual(settings["MISTRAL_MODEL"], "mistral-small")
+        self.assertEqual(settings["MISTRAL_BASE_URL"], "https://example.com/v1")
 
     def test_invalid_integer_raises_configuration_error(self) -> None:
         with patch.dict(os.environ, {"TOP_K": "many"}, clear=True):
