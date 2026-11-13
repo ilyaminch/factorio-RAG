@@ -1,0 +1,15 @@
+**
+!requirements.txt
+!src/
+!src/**
+!streamlit-app/
+!streamlit-app/app.py
+!streamlit-app/requirements.txt
+!streamlit-app/.streamlit/
+!streamlit-app/.streamlit/config.toml
+!deploy/
+!deploy/requirements.txt
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*

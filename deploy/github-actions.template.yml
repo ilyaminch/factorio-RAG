@@ -1,0 +1,38 @@
+# Пользователь копирует файл в .github/workflows/deploy.yml.
+name: Deploy RAG
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: factorio-rag
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'ilyaminch/factorio-RAG' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and deploy on server
+        env:
+          DEPLOY_KEY: ${{ secrets.RAG_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY"
+          mkdir -m 700 -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/rag_key
+          chmod 600 ~/.ssh/rag_key
+          echo '[90.188.3.104]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINpiVjnqhQyKU3bjdJAG6j1dpHD3kw0aAhHTPDgIutyR' > ~/.ssh/known_hosts
+          tar -czf /tmp/rag-source.tgz requirements.txt src streamlit-app/app.py streamlit-app/requirements.txt streamlit-app/.streamlit deploy
+          scp -i ~/.ssh/rag_key -P 2222 -o BatchMode=yes -o StrictHostKeyChecking=yes /tmp/rag-source.tgz safron@90.188.3.104:/mnt/storage/factorio-rag/source.tgz
+          ssh -i ~/.ssh/rag_key -p 2222 -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 safron@90.188.3.104 \
+            'set -eu; cd /mnt/storage/factorio-rag; docker build -t factorio-rag:local -f deploy/Dockerfile - < source.tgz; tar -xzf source.tgz deploy/compose.yaml; docker compose -f deploy/compose.yaml up -d --wait --wait-timeout 120'
+      - name: Remove temporary key
+        if: always()
+        run: rm -f ~/.ssh/rag_key
