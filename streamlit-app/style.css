@@ -1,0 +1,109 @@
+/* Тёплая промышленная палитра; содержимое чата остаётся нативным Streamlit. */
+@font-face {
+    font-family: "Full Automation";
+    src: url("data:font/otf;base64,{{FULL_AUTOMATION}}") format("opentype");
+}
+@font-face {
+    font-family: "Exo 2";
+    src: url("data:font/ttf;base64,{{EXO_2}}") format("truetype");
+    font-weight: 100 900;
+}
+.stApp {
+    background: linear-gradient(to top right, #ffffff 0%, #faf8f6 48%, #f8e8d8 100%);
+    background-attachment: fixed;
+    color: #302e2b;
+    font-family: "Exo 2", "Segoe UI", sans-serif;
+}
+
+[data-testid="stHeader"] {
+    background: transparent;
+}
+
+[data-testid="stMainBlockContainer"] {
+    max-width: 900px;
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.factory-header {
+    min-height: 74px;
+    width: fit-content;
+    max-width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    margin-bottom: 2rem;
+    overflow: hidden;
+    border-radius: 58px;
+    background: linear-gradient(to top right, #f8e8d8 0%, #faf8f6 52%, #ffffff 100%);
+    box-shadow: 0 8px 25px rgba(105, 76, 53, 0.09);
+}
+
+.factory-heading {
+    min-width: 0;
+    transform: translateY(3px);
+}
+.factory-header h1 {
+    margin: 0;
+    padding: 0;
+    color: #383838;
+    font-family: "Full Automation", "Arial Narrow", sans-serif;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 400;
+    letter-spacing: 0;
+}
+.factory-header h1 a { display: none; }
+[data-testid="stVerticalBlock"][overflow="visible"] {
+    border: 1px solid #c9ad96;
+    border-radius: 12px;
+    background: #faf8f6;
+}
+[data-testid="stHorizontalBlock"] { margin-bottom: 1.1rem; }
+[data-testid="stMarkdownContainer"] p { font-size: 1.1rem; line-height: 1.65; }
+[data-testid="stMarkdownContainer"] a { color: #85502b; }
+
+[data-testid="stBottom"], [data-testid="stBottomBlockContainer"] {
+    background: transparent !important;
+}
+[data-testid="stBottom"]::before,
+[data-testid="stBottom"] > div {
+    background: transparent !important;
+}
+[data-testid="stBottomBlockContainer"] {
+    max-width: 900px;
+    width: 100%;
+}
+[data-testid="stChatInput"] {
+    border: 1px solid #c9ad96;
+    border-radius: 15px;
+    background: #faf8f6;
+    box-shadow: 0 4px 16px rgba(100, 72, 49, 0.12);
+}
+[data-testid="stChatInput"] > div {
+    border-radius: 15px;
+    background: #faf8f6;
+}
+[data-testid="stChatInput"]:focus-within {
+    border-color: #bb743c;
+    box-shadow: 0 0 0 3px rgba(200, 126, 65, 0.18), 0 6px 18px rgba(100, 72, 49, 0.14);
+}
+[data-testid="stChatInput"] textarea {
+    color: #302e2b;
+    font-family: "Exo 2", "Segoe UI", sans-serif;
+    font-size: 1.1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+[data-testid="stMarkdownContainer"] { font-family: "Exo 2", "Segoe UI", sans-serif; }
+[data-testid="stChatInput"] button {
+    border-radius: 10px;
+    background: #c7824b;
+    color: white;
+}
+[data-testid="stChatInput"] button:disabled { background: #d7c3b1; }
+
+@media (max-width: 600px) {
+    [data-testid="stMainBlockContainer"] { padding-top: 1.5rem; }
+    .factory-header { min-height: 88px; padding: 1rem 1.35rem; }
+}

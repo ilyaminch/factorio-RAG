@@ -1,0 +1,9 @@
+[client]
+toolbarMode = "minimal"
+
+[theme]
+base = "light"
+primaryColor = "#bd7844"
+baseRadius = "0.75rem"
+buttonRadius = "0.625rem"
+showWidgetBorder = true
