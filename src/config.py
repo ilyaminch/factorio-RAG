@@ -27,7 +27,7 @@ class Settings(TypedDict):
 
 
 _INTEGER_DEFAULTS = {
-    "VECTOR_SIZE": 384,
+    "VECTOR_SIZE": 1024,
     "TOP_K": 4,
     "HISTORY_TURNS": 5,
     "MAX_QUESTION_CHARS": 1000,
@@ -87,9 +87,9 @@ def load_settings() -> Settings:
         "COLLECTION_NAME": os.getenv("COLLECTION_NAME", "factorio_wiki").strip()
         or "factorio_wiki",
         "EMBEDDING_MODEL": os.getenv(
-            "EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"
+            "EMBEDDING_MODEL", "intfloat/multilingual-e5-large"
         ).strip()
-        or "BAAI/bge-small-en-v1.5",
+        or "intfloat/multilingual-e5-large",
         "MISTRAL_API_KEY": _optional_env("MISTRAL_API_KEY"),
         "MISTRAL_MODEL": _optional_env("MISTRAL_MODEL"),
         "MISTRAL_BASE_URL": _optional_env("MISTRAL_BASE_URL"),

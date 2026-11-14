@@ -1,34 +1,28 @@
-﻿from qdrant_client import QdrantClient, models
-from fastembed import TextEmbedding
+"""Векторный поиск по Factorio Wiki с multilingual E5 large.
 
-client = QdrantClient(path="./qdrant_db")
-embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-collection_name = "factorio_wiki"
+Запуск из корня: python -m src.database.query "How to make steel plates?"
+Можно передать несколько запросов в кавычках: модель загрузится один раз.
+"""
 
-query = "Recipe: steel plate"
+import sys
 
-query_embedding = list(embedding_model.embed([query]))[0].tolist()
+from src.config import load_settings
+from src.database.retriever import create_retriever
 
-query_filter = models.Filter(
-    must=[
-        models.FieldCondition(key="section", match=models.MatchValue(value="Characteristics"))
-    ]
-)
 
-response = client.query_points(
-    collection_name=collection_name,
-    query=query_embedding,
-    query_filter=query_filter,
-    limit=10,
-    with_payload=True
-)
+retriever = create_retriever(load_settings())
 
-print("\n--- Результаты поиска ---")
-for hit in response.points:
-    print(f"Сходство (Score): {hit.score:.4f}")
-    print(f"Заголовок: {hit.payload.get('title')}")
-    print(f"Раздел: {hit.payload.get('section')}")
-    print(f"Текст: {hit.payload.get('text').replace(chr(10), ' ')}")
-    print("-" * 50)
 
-client.close()
+queries = sys.argv[1:] or ['Recipe: steel plate']
+try:
+    for query in queries:
+        print(f'\nЗапрос: {query}', flush=True)
+        print('--- Результаты поиска ---')
+        for rank, hit in enumerate(retriever.search(query, limit=5), start=1):
+            print(f"\nМесто: {rank} | Сходство: {hit['score']:.4f}")
+            print(f"Заголовок: {hit.get('title')}")
+            print(f"Раздел: {hit.get('section')}")
+            print(f"Текст: {hit.get('text')}")
+            print(f"Источник: {hit.get('url')}")
+finally:
+    retriever.close()

@@ -1,47 +1,25 @@
-# Роль 5 — минимальный интерфейс
+# Streamlit chat
 
-Чат Streamlit: сообщения пользователя и ответы идут последовательно, источники показаны под соответствующим ответом. На странице сохраняется весь разговор текущей сессии, а в RAG передаются только последние пять успешных пар (или значение `HISTORY_TURNS`). Ошибки видны в чате, но в контекст RAG не попадают. Постоянного хранения разговоров нет.
+A Factorio Wiki chat with cited sources and session memory. Successful question/answer pairs are stored per session; only the latest `HISTORY_TURNS` pairs are passed to RAG. Failed turns are displayed but excluded from model history. Conversations are not saved after the session ends.
 
-## Запуск локально
+## Run
 
-Из корня репозитория в PowerShell:
-
-```powershell
-$env:PYTHONPATH = (Get-Location).Path
-Set-Location streamlit-app
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1 --server.port 8501
-```
-
-Откройте `http://127.0.0.1:8501`. Для остановки нажмите Ctrl+C в терминале приложения.
-
-## Подключение RAG
-
-Чтобы отправить вопрос, должны существовать и быть доступны импорты из согласованного командного контракта:
-
-```text
-src.config.load_settings
-src.database.retriever.create_retriever
-src.rag.generation.create_llm
-src.rag.service.answer
-```
-
-`answer` принимает `question`, список завершённых `history`, `retriever`, `llm` и `settings`; результат содержит `status`, `answer`, `sources`, `search_query`, `retrieved_chunks` и `error`.
-
-Пока нужных модулей в проекте нет, приложение покажет сообщение об ошибке интеграции вместо ответа.
-
-После передачи модуля Mistral владелец запуска должен добавить его зависимость в этот файл требований или в общий список команды. Зависимости поиска и базы уже перечислены в корневом `requirements.txt`.
-
-## Переменные среды
-
-Настоящая цепочка получает настройки из `src.config.load_settings`. В командном соглашении используются `MISTRAL_API_KEY`, `MISTRAL_MODEL`, `QDRANT_PATH` и связанные RAG-параметры. Задавайте ключ приватно в окружении PowerShell и не записывайте его в репозиторий.
-
-Пример для текущего окна PowerShell; заменить оба маркера собственными значениями:
+Build the Qdrant database first, then run from the repository root:
 
 ```powershell
-$env:MISTRAL_API_KEY = '<секретный ключ>'
-$env:MISTRAL_MODEL = '<доступный model ID>'
+python -m pip install -r deploy/requirements.txt
+$env:MISTRAL_API_KEY = '<private API key>'
+$env:MISTRAL_MODEL = '<model ID>'
+$env:MISTRAL_BASE_URL = '<compatible API base URL>'
+python -m streamlit run streamlit-app/app.py
 ```
 
-Отдельный `.env` не загружается автоматически кодом этого интерфейса.
+Omit `MISTRAL_BASE_URL` when using the provider's default endpoint. Local `.env` files are not loaded automatically. Open the local URL printed by Streamlit; stop with Ctrl+C. Never put real credentials into tracked files.
+
+## Integration
+
+The interface loads `src.config.load_settings`, `src.database.retriever.create_retriever`, `src.rag.generation.create_llm` and `src.rag.service.answer`. Follow-ups are rewritten into standalone search queries using history; retrieved chunks supply the answer context and numbered sources.
+
+Defaults: local Qdrant, collection `factorio_wiki`, multilingual E5 large, 1024 dimensions, `TOP_K=4`, `HISTORY_TURNS=5`. Override `QDRANT_PATH` for another storage location. The local database can be opened by one process at a time; stop indexing/CLI search before starting the app.
+
+[Project setup](../README.md) · [Database settings and retrieval results](../src/database/README.md)

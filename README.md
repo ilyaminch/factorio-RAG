@@ -5,13 +5,15 @@
 
 An educational retrieval project for [Factorio Wiki](https://wiki.factorio.com/), covering items, recipes, research and mechanics from the base game and Space Age. English articles are collected, cleaned and split into source-linked chunks, then embedded with FastEmbed and searched through local Qdrant.
 
-**Implemented:** data collection, preprocessing, indexing and vector search. **Next:** LLM answers grounded in retrieved passages and a Streamlit interface.
+**Implemented:** data collection, preprocessing, E5 embeddings, Qdrant retrieval, cited LLM answers and a Streamlit chat with session memory. Follow-up questions are rewritten using recent dialogue history.
 
 ```mermaid
 flowchart LR
     W[Factorio Wiki] --> P[Data pipeline]
     P --> V[FastEmbed + Qdrant]
-    V --> S[Search with sources]
+    V --> S[Retrieval with sources]
+    S --> R[LLM + dialogue history]
+    R --> U[Streamlit chat]
 ```
 
 ## Layout
@@ -19,7 +21,12 @@ flowchart LR
 ```text
 src/
 ├── data_pipeline/    # parser.py and preprocess.py
-└── database/         # index.py and query.py
+├── database/         # index.py, query.py and retriever.py
+├── rag/              # Conversation orchestration and LLM generation
+├── config.py         # Shared environment settings
+└── contracts.py      # Search, history and answer formats
+streamlit-app/        # Chat interface
+deploy/               # Container setup and complete app dependencies
 data/                 # Raw pages, cleaned articles and chunks
 qdrant_db/            # Local vector database
 clear_raw.bat
@@ -43,11 +50,25 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m src.database.query
 ```
 
-The indexer reads `data/processed/chunks.jsonl` from the project root. Its input path is adjusted for the relocated layout; the remaining database logic is unchanged.
+The indexer reads `data/processed/chunks.jsonl`. Paths and model settings come from `src/config.py`, with environment overrides.
 
 If a complete raw dataset is already available, start with preprocessing. To resume an incomplete collection, run the parser again; it skips existing files and downloads missing pages. To refresh saved pages from the Wiki, clear raw first and repeat the pipeline.
 
-From the repository root, Qdrant persists in `qdrant_db/`; run indexing and search sequentially. The model is `BAAI/bge-small-en-v1.5` (384 dimensions). Search uses a fixed English query and section filter defined in `query.py`, and prints passages and similarity scores. Scores are not confidence probabilities; source URLs remain in the stored metadata.
+Qdrant defaults to `qdrant_db/` at the project root; run indexing and the app sequentially. The model is `intfloat/multilingual-e5-large` (1024 dimensions). CLI search accepts quoted questions and searches all sections. Similarity scores are not confidence probabilities. Rebuild the database when changing the model or dataset.
+
+## Chat with memory
+
+Install the full application dependencies, set private LLM connection settings, then launch:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r deploy/requirements.txt
+$env:MISTRAL_API_KEY = '<private API key>'
+$env:MISTRAL_MODEL = '<model ID>'
+$env:MISTRAL_BASE_URL = '<compatible API base URL>'
+.\.venv\Scripts\python.exe -m streamlit run streamlit-app/app.py
+```
+
+For the provider's default endpoint, omit `MISTRAL_BASE_URL`. Variables are read from the process environment; local `.env` files are not loaded automatically. Memory keeps the latest `HISTORY_TURNS` successful turns for follow-up rewriting and answer generation; conversations are not persisted across sessions. See the [chat interface](streamlit-app/README.md) and [retrieval checks](src/database/README.md#retrieval-check).
 
 ## Cleanup
 

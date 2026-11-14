@@ -175,7 +175,7 @@ def generate_answer(
         {"role": "system", "content": system_instruction}
     ]
 
-    for turn in history[-5:]:
+    for turn in history[-settings.get("HISTORY_TURNS", 5):]:
         past_q = turn.get("question")
         past_a = turn.get("answer")
         if past_q and past_a:
